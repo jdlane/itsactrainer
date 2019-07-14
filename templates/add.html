@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block main %}
+
+<h6>These questions are automatically inserted into a database and must be manually removed/edited. Please enter your submission carefully.</h6>
+<br>
+<form action="/add" method="POST" onsubmit="return check();">
+    <div class="form-group">
+    <select name="type" class="form-control">
+        {% if type == "regular" %}
+        <option value="reg" selected>Standard Question</option>
+        {% else %}
+        <option value="reg">Standard Question</option>
+        {% endif %}
+        {% if type == "first" %}
+        <option value="first" selected>First Round</option>
+        {% else %}
+        <option value="first">First Round</option>
+        {% endif %}
+        <!--  <option value="pic">Picture Question</option>  -->
+    </select>
+    </div>
+    <div class="form-group">
+    <input placeholder="Question" name="question" class="form-control" id="question">
+    </div>
+    <div class="form-group">
+    <input placeholder="Answer" name="answer" class="form-control" id="answer">
+    </div>
+    <div class="form-group">
+    <select class="form-control" name="category" id="category">
+        <option value="category" disabled selected>Category</option>
+        <option value="geo">Geography</option>
+        <option value="ush">US History</option>
+        <option value="world history">World History</option>
+        <option value="lit">Literature</option>
+        <option value="inventors">Inventors</option>
+        <option value="music">Music</option>
+        <option value="art">Art</option>
+        <option value="sci">Science</option>
+        <option value="sci">Math</option>
+        <option value="misc">Miscellaneous</option>
+    </select>
+    </div>
+    <div class="form-group">
+    <input placeholder="Theme" name="theme" class="form-control" id="theme" value="{{theme}}">
+    <input type="file" name="pic" class="form-control" id="pic">
+    </div>
+    <div class="form-group">
+    <input type="submit" value="Add Question" class="btn btn-primary form-control">
+    </div>
+    <p class="text-danger" id="error">{{error}}</p>
+</form>
+
+<script>
+
+    if(document.querySelector("select").value == "first"){
+        document.querySelector("#pic").style.visibility = "hidden";
+        document.querySelector("#theme").style.visibility = "visible";
+    }
+    if(document.querySelector("select").value == "reg"){
+        document.querySelector("#pic").style.visibility = "hidden";
+        document.querySelector("#theme").style.visibility = "hidden";
+    }
+    if(document.querySelector("select").value == "pic"){
+        document.querySelector("#pic").style.visibility = "visible";
+        document.querySelector("#theme").style.visibility = "hidden";
+    }
+
+    document.querySelector("select").addEventListener('change', () => {
+        var val = document.querySelector("select").value;
+        if(val == "first"){
+            document.querySelector("#pic").style.visibility = "hidden";
+            document.querySelector("#theme").style.visibility = "visible";
+        }
+        if(val == "reg"){
+            document.querySelector("#pic").style.visibility = "hidden";
+            document.querySelector("#theme").style.visibility = "hidden";
+        }
+        if(val == "pic"){
+            document.querySelector("#pic").style.visibility = "visible";
+            document.querySelector("#theme").style.visibility = "hidden";
+        }
+    });
+
+    function check(){
+        var filled = true;
+
+        if(!document.querySelector("#question")){
+            filled=false;
+        }
+        if(!document.querySelector("#answer")){
+            filled=false;
+        }
+        var val = document.querySelector("select").value;
+        if(val=="first"&&!document.querySelector("#theme").value){
+            filled=false;
+        }
+        if(val=="pic"&&!document.querySelector("#pic").value){
+            filled=false;
+        }
+        if(document.querySelector("#category").value=="category"){
+            filled = false;
+        }
+
+        if(!filled){
+            document.querySelector("#error").innerHTML = "fill all fields";
+        }
+
+        return filled;
+    }
+</script>
+
+{% endblock %}

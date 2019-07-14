@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block main %}
+
+<p id="theme"></p>
+<h5 id="q"></h5>
+<input type="text" placeholder="Answer">
+<p id="answer"></p>
+<button class="btn btn-primary" id="check" onclick="loadAnswer();" autofocus>Check</button>
+<br/>
+<button class="btn btn-primary" id="next" onclick="next();">Next</button>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () =>{
+        document.querySelector("#next").style.visibility = "hidden";
+        document.querySelector("#check").style.visibility = "visible";
+        loadQuestion();
+    });
+
+    document.querySelector("input").addEventListener('keypress', (e) => {
+        if(e.key==="Enter"){
+            loadAnswer();
+        }
+    });
+
+    function next(){
+        loadQuestion();
+        document.querySelector("#answer").innerHTML = "";
+        document.querySelector("input").disabled = false;
+        document.querySelector("input").value = "";
+        document.querySelector("input").focus();
+        document.querySelector("#next").style.visibility = "hidden";
+        document.querySelector("#check").style.visibility = "visible";
+    }
+
+    function loadQuestion(){
+        $.get("/questions?round=0", (info) => {
+           if(info.last){
+               window.location.href = "/";
+           }else{
+           document.querySelector("#q").innerHTML = info["question"];
+           document.querySelector("#theme").innerHTML = info["theme"];
+           }
+        });
+    }
+
+    function loadAnswer(){
+        $.get("/answers?round=0", (answer) => {
+           document.querySelector("#next").style.visibility = "visible";
+           document.querySelector("#answer").innerHTML = answer;
+           document.querySelector("input").disabled = true;
+           document.querySelector("#check").style.visibility = "hidden";
+        });
+    }
+</script>
+
+{% endblock %}

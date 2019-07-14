@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block main %}
+<form action="/game" method="post" onsubmit="return check();">
+    <div class="checkbox form-group">
+    <input type="checkbox" name="round1" id="round1">First Round</input>
+    </div>
+    <!--
+    <div class="form-group checkbox">
+    <input type="checkbox" name="individual" class="">Individual Round</input>
+    </div>
+    <div class="form-group checkbox">
+    <input type="checkbox" name="picture" class="">Picture Perfect Round</input>
+    </div>
+    <div class="form-group checkbox">
+    <input type="checkbox" name="bonus" class="">Bonus Round</input>
+    </div>
+    <div class="form-group checkbox">
+    <input type="checkbox" name="grabbag" class="">Grab Bag Round</input>
+    </div>
+    <div class="form-group checkbox">
+    <input type="checkbox" name="all" class="">Full Game</input>
+    </div>
+    -->
+    <input type="submit" class="btn btn-primary" value="Start"></input>
+</form>
+
+<p class="text-danger" id="error"><p>
+
+<script>
+
+    function check(){
+        var filled = false;
+        if(document.querySelectorAll("input").forEach(input => {
+            if(input.type=="checkbox"&&input.checked){
+                filled = true;
+            }
+        }));
+        if(!filled){
+        document.querySelector("#error").innerHTML = "Check a box!";
+        }else{
+        document.querySelector("#error").innerHTML = "";
+        }
+        return filled;
+    }
+</script>
+{% endblock %}
