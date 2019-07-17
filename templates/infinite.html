@@ -15,9 +15,9 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", () =>{
-        document.querySelector("#next").style.visibility = "hidden";
-        document.querySelector("#check").style.visibility = "visible";
-        document.querySelector("#pic").style.visibility = "hidden";
+        document.querySelector("#next").style = "display: none";
+        document.querySelector("#check").style = "display: inline";
+        document.querySelector("#pic").style = "display: none";
         loadQuestion();
     });
 
@@ -33,8 +33,8 @@
         document.querySelector("input").disabled = false;
         document.querySelector("input").value = "";
         document.querySelector("input").focus();
-        document.querySelector("#next").style.visibility = "hidden";
-        document.querySelector("#check").style.visibility = "visible";
+        document.querySelector("#next").style = "display: none";
+        document.querySelector("#check").style = "display: inline";
     }
 
     function loadQuestion(){
@@ -48,19 +48,19 @@
            if(info["pic"]){
                document.querySelector("#pic").src = info["pic"];
                document.querySelector("#pic").style = "width: 400; height:400"
-               document.querySelector("#pic").visibility = "visible";
+               document.querySelector("#pic").style = "display: inline;";
            }else{
-               document.querySelector("#pic").visibility = "hidden";
+               document.querySelector("#pic").style = "display: none;";
            }
         });
     }
 
     function loadAnswer(){
         $.get("/answers?round=infinite", (answer) => {
-           document.querySelector("#next").style.visibility = "visible";
+           document.querySelector("#next").style = "display: inline";
            document.querySelector("#answer").innerHTML = answer;
            document.querySelector("input").disabled = true;
-           document.querySelector("#check").style.visibility = "hidden";
+           document.querySelector("#check").style = "display: none";
         });
     }
 </script>

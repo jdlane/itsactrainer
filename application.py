@@ -196,7 +196,7 @@ def questions():
         round1_max = db.execute("SELECT id FROM round1 ORDER BY id DESC LIMIT 1")[0]["id"]
         reg_max = db.execute("SELECT id FROM regulars ORDER BY id DESC LIMIT 1")[0]["id"]
         pic_max = db.execute("SELECT id FROM pic_questions ORDER BY id DESC LIMIT 1")[0]["id"]
-        qid = random.randint(round1_max+reg_max,round1_max+reg_max+pic_max)
+        qid = random.randint(1,round1_max+reg_max+pic_max)
         if qid > round1_max and qid <= round1_max+reg_max:
             qid -= round1_max
             question = db.execute("SELECT question FROM regulars WHERE id=:qid", qid=qid)
