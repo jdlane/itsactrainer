@@ -4,7 +4,7 @@
 
 <h1 class="font-wight-bold text-justify text-primary">Infinite Academic</h1>
 <br>
-<img id="pic"></img>
+<img src="" id="pic" class="img-fluid"></img>
 <p id="theme"></p>
 <h5 id="q"></h5>
 <input type="text" placeholder="Answer">
@@ -44,6 +44,13 @@
                document.querySelector("#theme").innerHTML = info["theme"];
            }else{
                document.querySelector("#theme").innerHTML = "";
+           }
+           if(info["pic"]){
+               document.querySelector("#pic").src = info["pic"];
+               document.querySelector("#pic").style = "width: 400; height:400"
+               document.querySelector("#pic").visibility = "visible";
+           }else{
+               document.querySelector("#pic").visibility = "hidden";
            }
         });
     }

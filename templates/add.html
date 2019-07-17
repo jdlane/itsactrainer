@@ -4,7 +4,7 @@
 
 <h6>These questions are automatically inserted into a database and must be manually removed/edited. Please enter your submission carefully.</h6>
 <br>
-<form action="/add" method="POST" onsubmit="return check();">
+<form action="/add" method="POST" enctype="multipart/form-data" onsubmit="return check();">
     <div class="form-group">
     <select name="type" class="form-control">
         {% if type == "regular" %}
@@ -17,7 +17,11 @@
         {% else %}
         <option value="first">First Round</option>
         {% endif %}
-        <!--  <option value="pic">Picture Question</option>  -->
+        {% if type == "pic" %}
+        <option value="pic" selected>Picture Question</option>
+        {% else %}
+        <option value="pic">Picture Question</option>
+        {% endif %}
     </select>
     </div>
     <div class="form-group">

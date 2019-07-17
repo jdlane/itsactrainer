@@ -2,9 +2,11 @@ from flask import Flask, render_template, redirect, request, session, jsonify
 from flask_session import Session
 from tempfile import mkdtemp
 from cs50 import SQL
+from tempfile import mkstemp, NamedTemporaryFile #TODO
 import random
+import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path = "", static_folder = "statics")
 
 # Configure session to use filesystem (instead of signed cookies)
 app.config["SESSION_FILE_DIR"] = mkdtemp()
@@ -16,6 +18,39 @@ app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 db = SQL("sqlite:///database.db")
 
+def blob_to_file(ext, blob):
+    blob = bytearray.fromhex(blob)
+    if ext == "png":
+        try:
+            os.remove("statics/pic.png")
+        except:
+            print("file not found")
+        file = open("statics/pic.png", "x")
+        file.close();
+        file = open("statics/pic.png", "wb")
+        file.write(blob)
+        file.close()
+        return "pic.png"
+    if ext == "jpg":
+        try:
+            os.remove("pic.jpg")
+        except:
+            print("file not found")
+        file = open("jpg.png", "x")
+        file.close();
+        file = open("jpg.png", "wb")
+        file.write(blob)
+        file.close()
+        return "pic.jpg"
+
+# Ensure responses aren't cached
+@app.after_request
+def after_request(response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Expires"] = 0
+    response.headers["Pragma"] = "no-cache"
+    return response
+
 @app.route("/")
 def index():
         return render_template("index.html")
@@ -23,6 +58,10 @@ def index():
 @app.route("/match")
 def match():
     return render_template("match.html")
+
+@app.route("/pic")
+def pic():
+    return session.get("pic")
 
 @app.route("/infinite")
 def infinite():
@@ -41,7 +80,8 @@ def add():
         category = request.form.get("category")
         if category == "category" or not question or not answer:
             return render_template("round1", error="fill all fields")
-        if not request.form.get("theme") and not request.form.get("pic"):
+        #if regular question, add to table and return template
+        if not request.form.get("theme") and not request.files["pic"]:
             db.execute("INSERT INTO regulars (question,answer,category) VALUES (:question,:answer,:category)",question=question,answer=answer,category=category)
             return render_template("add.html", type="regular")
         #if theme question, add to table and return template with first round selected and same theme
@@ -51,6 +91,15 @@ def add():
                 return render_template("add.html",error="fill all fields")
             db.execute("INSERT INTO round1 (question,answer,theme,category) VALUES (:question,:answer,:theme,:category)",question=question,answer=answer,theme=theme, category=category)
             return render_template("add.html", type="first", theme=theme)
+        #if pic question, convert to byte array then to hex, add to table
+        if request.files["pic"] and not request.form.get("theme"):
+            pic = request.files["pic"].stream.read()
+            filetype = str(request.files["pic"]).split("'")[1].split(".")[1].lower()
+            pic = bytearray(pic)
+            pic = "".join(format(x, "02x") for x in pic)
+            db.execute("INSERT INTO pictures (img, type) VALUES (:img,:type)", img=pic, type=filetype)
+            db.execute("INSERT INTO pic_questions (question, answer) VALUES (:question,:answer)",question=question,answer=answer)
+            return render_template("add.html", type="pic",)
 
 @app.route("/game", methods=["POST"])
 def game():
@@ -146,8 +195,9 @@ def questions():
     if request.args.get("round") == "infinite":
         round1_max = db.execute("SELECT id FROM round1 ORDER BY id DESC LIMIT 1")[0]["id"]
         reg_max = db.execute("SELECT id FROM regulars ORDER BY id DESC LIMIT 1")[0]["id"]
-        qid = random.randint(1,round1_max+reg_max)
-        if qid > round1_max:
+        pic_max = db.execute("SELECT id FROM pic_questions ORDER BY id DESC LIMIT 1")[0]["id"]
+        qid = random.randint(round1_max+reg_max,round1_max+reg_max+pic_max)
+        if qid > round1_max and qid <= round1_max+reg_max:
             qid -= round1_max
             question = db.execute("SELECT question FROM regulars WHERE id=:qid", qid=qid)
             while not question:
@@ -162,6 +212,17 @@ def questions():
                 question = db.execute("SELECT question, theme FROM round1 WHERE id=:qid", qid=qid)
             session["current_question"] = {"table": "round1", "id": qid}
             return jsonify(question[0])
+        if qid > round1_max+reg_max:
+            qid -= round1_max+reg_max
+            question = db.execute("SELECT question FROM pic_questions WHERE id=:qid", qid=qid)
+            while not question:
+                qid = random.randint(1,pic_max)
+                question = db.execute("SELECT question FROM pic_questions WHERE id=:qid", qid=qid)
+            session["current_question"] = {"table": "pic_questions", "id": qid}
+            pic = db.execute("SELECT img, type FROM pictures WHERE id=:qid", qid=qid)
+            pic = blob_to_file(pic[0]["type"], pic[0]["img"])
+            question[0].update({"pic":pic})
+            return jsonify(question[0])
 
 @app.route("/answers", methods=["GET"])
 def answers():
@@ -170,9 +231,8 @@ def answers():
             return redirect("/")
         else:
             if(session.get("question_num")>len(session.get("round1"))):
-                redirect("/")
-            answer = db.execute("SELECT answer FROM round1 WHERE id=:qid", qid=session.get("round1")[session.get("question_num")-1]["id"])
-            return jsonify(answer[0]["answer"])
+                answer = db.execute("SELECT answer FROM round1 WHERE id=:qid", qid=session.get("round1")[session.get("question_num")-1]["id"])
+                return jsonify(answer[0]["answer"])
     if request.args.get("round") == "infinite":
         table = session.get("current_question")["table"]
         qid = session.get("current_question")["id"]
