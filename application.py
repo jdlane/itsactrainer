@@ -16,10 +16,13 @@ Session(app)
 
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
-db = SQL("sqlite:///database.db")
+db = SQL("postgres://oixtuuuzwefixg:cbe1e8eaa7c8956e26469b418ebf1f14ce60fa545712d90bf5ae6a7a81b30aa6@ec2-174-129-41-127.compute-1.amazonaws.com:5432/ddl1v1b0r2nnud")
 
 def blob_to_file(ext, blob):
+    blob = bytes(blob)
+    blob = str(blob, "utf-8")
     blob = bytearray.fromhex(blob)
+    print(blob)
     if ext == "png":
         try:
             os.remove("statics/pic.png")
@@ -53,7 +56,8 @@ def after_request(response):
 
 @app.route("/")
 def index():
-        return render_template("index.html")
+    print(db.execute("SELECT * FROM pic_questions;"))
+    return render_template("index.html")
 
 @app.route("/match")
 def match():
@@ -67,6 +71,10 @@ def pic():
 def infinite():
     session.clear()
     return render_template("infinite.html")
+
+@app.route("/buzzer")
+def buzzer():
+    return render_template("buzzer.html")
 
 @app.route("/add", methods=["POST", "GET"])
 def add():
@@ -99,7 +107,7 @@ def add():
             pic = "".join(format(x, "02x") for x in pic)
             db.execute("INSERT INTO pictures (img, type) VALUES (:img,:type)", img=pic, type=filetype)
             db.execute("INSERT INTO pic_questions (question, answer) VALUES (:question,:answer)",question=question,answer=answer)
-            return render_template("add.html", type="pic",)
+            return render_template("add.html", type="pic")
 
 @app.route("/game", methods=["POST"])
 def game():
@@ -192,37 +200,66 @@ def questions():
             dic = session.get("round1")[num]
             dic.update({'last': False})
             return jsonify(dic)
-    if request.args.get("round") == "infinite":
+    if request.args.get("round") == "infinite" and not request.args.get("letters"):
+        session.clear()
+        #set letter index to 0 for buzzer mode
+        session["q_letter"] = 0
+        #get max ids for each question table
         round1_max = db.execute("SELECT id FROM round1 ORDER BY id DESC LIMIT 1")[0]["id"]
         reg_max = db.execute("SELECT id FROM regulars ORDER BY id DESC LIMIT 1")[0]["id"]
         pic_max = db.execute("SELECT id FROM pic_questions ORDER BY id DESC LIMIT 1")[0]["id"]
+        #generate random number from 1 to all max ids combined
         qid = random.randint(1,round1_max+reg_max+pic_max)
+        #if random number corresponds with regular question select question and return
         if qid > round1_max and qid <= round1_max+reg_max:
             qid -= round1_max
             question = db.execute("SELECT question FROM regulars WHERE id=:qid", qid=qid)
+            #keep getting random row until successful
             while not question:
                 qid = random.randint(1,reg_max)
                 question = db.execute("SELECT question FROM regulars WHERE id=:qid", qid=qid)
+            #set session variable for question info
             session["current_question"] = {"table": "regulars", "id": qid}
             return jsonify(question[0])
+        #if random number corresponds with themed question, select question and theme and return
         if qid <= round1_max:
             question = db.execute("SELECT question, theme FROM round1 WHERE id=:qid", qid=qid)
+            #keep getting random row until successful
             while not question:
                 qid = random.randint(1,round1_max)
                 question = db.execute("SELECT question, theme FROM round1 WHERE id=:qid", qid=qid)
+            #set session variable for question info
             session["current_question"] = {"table": "round1", "id": qid}
             return jsonify(question[0])
+        #if random number corresponds with picture table, select picture and question and return
         if qid > round1_max+reg_max:
             qid -= round1_max+reg_max
             question = db.execute("SELECT question FROM pic_questions WHERE id=:qid", qid=qid)
+            #keep getting random row until successful
             while not question:
                 qid = random.randint(1,pic_max)
                 question = db.execute("SELECT question FROM pic_questions WHERE id=:qid", qid=qid)
+            #set session variable for question info
             session["current_question"] = {"table": "pic_questions", "id": qid}
+            #get pic and save it via blob_to_file
             pic = db.execute("SELECT img, type FROM pictures WHERE id=:qid", qid=qid)
             pic = blob_to_file(pic[0]["type"], pic[0]["img"])
             question[0].update({"pic":pic})
             return jsonify(question[0])
+    #if one letter at a time, return next letter of question
+    if request.args.get("round") == "infinite" and request.args.get("letters"):
+        #track new question by storing question id
+        if not session.get("q_letter"):
+            session["q_letter"] = 0
+        if not session.get("current_question"):
+            return jsonify("no question")
+        question = db.execute("SELECT question FROM :table WHERE id=:qid", qid=session.get("current_question")["id"], table=session.get("current_question")["table"])
+        if session["q_letter"] < len(question[0]["question"]):
+            index = session.get("q_letter")
+            session["q_letter"] += 1
+            return jsonify({"question": question[0]["question"][index], "index": index})
+        else:
+            return jsonify("last")
 
 @app.route("/answers", methods=["GET"])
 def answers():
@@ -236,5 +273,10 @@ def answers():
     if request.args.get("round") == "infinite":
         table = session.get("current_question")["table"]
         qid = session.get("current_question")["id"]
-        answer = db.execute("SELECT answer FROM :table WHERE id=:qid", table=table, qid=qid)
+        if table == "round1":
+            answer = db.execute("SELECT answer FROM round1 WHERE id=:qid", qid=qid)
+        if table == "regulars":
+            answer = db.execute("SELECT answer FROM regulars WHERE id=:qid", qid=qid)
+        if table == "pic_questions":
+            answer = db.execute("SELECT answer FROM pic_questions WHERE id=:qid", qid=qid)
         return jsonify(answer[0]["answer"])
