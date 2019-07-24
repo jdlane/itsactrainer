@@ -3,3 +3,4 @@ Flask
 Flask-Session
 gunicorn
 requests
+psycopg2
