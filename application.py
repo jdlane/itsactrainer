@@ -22,7 +22,6 @@ def blob_to_file(ext, blob):
     blob = bytes(blob)
     blob = str(blob, "utf-8")
     blob = bytearray.fromhex(blob)
-    print(blob)
     if ext == "png":
         try:
             os.remove("statics/pic.png")
@@ -56,7 +55,6 @@ def after_request(response):
 
 @app.route("/")
 def index():
-    print(db.execute("SELECT * FROM pic_questions;"))
     return render_template("index.html")
 
 @app.route("/match")
@@ -171,10 +169,11 @@ def game():
             return render_template("bonus.html")
         if layout["grab bag"] == True:
             return render_template("grabbag.html")
+
 @app.route("/round1")
 def round1():
     if not session.get("round1"):
-        max_id = db.execute("SELECT id FROM round1 ORDER BY id DESC LIMIT 1")[0]["id"]
+        max_id = db.execute("SELECT id FROM round1;")[0]["id"]
         question_queue = []
         while len(question_queue) < 8:
             qid = random.randint(1,max_id)

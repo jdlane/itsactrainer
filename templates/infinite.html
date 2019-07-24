@@ -1,8 +1,12 @@
 {% extends "base.html" %}
 
 {% block main %}
-
-<h1 class="font-wight-bold text-justify text-primary">Infinite Academic</h1>
+<h1 class="font-wight-bold text-justify text-primary">
+Infinite Academic
+<div class="spinner-border" role="status" id="load">
+  <span class="sr-only">Loading...</span>
+</div>
+</h1>
 <br>
 <img src="" id="pic" class="img-fluid"></img>
 <p id="theme"></p>
@@ -18,6 +22,7 @@
         document.querySelector("#next").style = "display: none";
         document.querySelector("#check").style = "display: inline";
         document.querySelector("#pic").style = "display: none";
+        document.querySelector("#load").style.visibility = "hidden";
         loadQuestion();
     });
 
@@ -30,11 +35,13 @@
     function next(){
         loadQuestion();
         document.querySelector("#answer").innerHTML = "";
-        document.querySelector("input").disabled = false;
-        document.querySelector("input").value = "";
-        document.querySelector("input").focus();
+         document.querySelector("#q").innerHTML = "";
+         document.querySelector("#theme").innerHTML = "";
+         document.querySelector("#pic").style = "display: none";
+        document.querySelector("input").style = "display: none";
         document.querySelector("#next").style = "display: none";
-        document.querySelector("#check").style = "display: inline";
+        document.querySelector("#check").style = "display: none";
+        document.querySelector("#load").style.visibility = "visible";
     }
 
     function loadQuestion(){
@@ -52,6 +59,12 @@
            }else{
                document.querySelector("#pic").style = "display: none;";
            }
+           document.querySelector("#check").style = "display: inline;";
+           document.querySelector("input").disabled = false;
+        document.querySelector("input").value = "";
+        document.querySelector("input").focus();
+        document.querySelector("input").style = "display: inline";
+        document.querySelector("#load").style.visibility = "hidden";
         });
     }
 
