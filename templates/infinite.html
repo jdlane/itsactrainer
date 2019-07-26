@@ -46,6 +46,9 @@ Infinite Academic
 
     function loadQuestion(){
         $.get("/questions?round=infinite", (info) => {
+            if(info === "error"){
+                window.location.href = "/error?error=category";
+            }
            document.querySelector("#q").innerHTML = info["question"];
            if(info["theme"]){
                document.querySelector("#theme").innerHTML = info["theme"];

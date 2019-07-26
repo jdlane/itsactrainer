@@ -33,17 +33,41 @@ def blob_to_file(ext, blob):
         file.write(blob)
         file.close()
         return "pic.png"
-    if ext == "jpg":
+    if ext == "jpg" or ext == "jpeg":
         try:
-            os.remove("pic.jpg")
+            os.remove("statics/pic.jpg")
         except:
             print("file not found")
-        file = open("jpg.png", "x")
+        file = open("statics/pic.jpg", "x")
         file.close();
-        file = open("jpg.png", "wb")
+        file = open("statics/pic.jpg", "wb")
         file.write(blob)
         file.close()
         return "pic.jpg"
+
+def get_question(table, qid):
+    question = None
+    if not session.get("categories"):
+        question = db.execute("SELECT question FROM "+table+" WHERE id=:qid", qid=qid)
+    else:
+        cats = str(session.get("categories")).replace("[","(").replace("]",")")
+        if not db.execute("SELECT id FROM "+table+" WHERE id=:qid AND category IN "+cats, qid=qid):
+            return "error"
+        string = "SELECT question FROM "+table+" WHERE id=:qid AND category IN "+cats
+        question = db.execute(string, qid=qid)
+    return question
+
+def get_question_and_theme(table, qid):
+    question = None
+    if not session.get("categories"):
+        question = db.execute("SELECT question, theme FROM "+table+" WHERE id=:qid", qid=qid)
+    else:
+        cats = str(session.get("categories")).replace("[","(").replace("]",")")
+        if not db.execute("SELECT id FROM "+table+" WHERE id=:qid AND category IN "+cats, qid=qid):
+            return "error"
+        string = "SELECT question, theme FROM "+table+" WHERE id=:qid AND category IN "+cats
+        question = db.execute(string, qid=qid)
+    return question
 
 # Ensure responses aren't cached
 @app.after_request
@@ -57,6 +81,13 @@ def after_request(response):
 def index():
     return render_template("index.html")
 
+@app.route("/error",methods=["GET"])
+def error():
+    if request.args.get("error"):
+        return render_template("error.html",error=request.args.get("error"))
+    else:
+        return render_template("error.html")
+
 @app.route("/match")
 def match():
     return render_template("match.html")
@@ -67,7 +98,6 @@ def pic():
 
 @app.route("/infinite")
 def infinite():
-    session.clear()
     return render_template("infinite.html")
 
 @app.route("/buzzer")
@@ -200,7 +230,6 @@ def questions():
             dic.update({'last': False})
             return jsonify(dic)
     if request.args.get("round") == "infinite" and not request.args.get("letters"):
-        session.clear()
         #set letter index to 0 for buzzer mode
         session["q_letter"] = 0
         #get max ids for each question table
@@ -212,32 +241,38 @@ def questions():
         #if random number corresponds with regular question select question and return
         if qid > round1_max and qid <= round1_max+reg_max:
             qid -= round1_max
-            question = db.execute("SELECT question FROM regulars WHERE id=:qid", qid=qid)
+            question = get_question("regulars",qid)
             #keep getting random row until successful
             while not question:
                 qid = random.randint(1,reg_max)
-                question = db.execute("SELECT question FROM regulars WHERE id=:qid", qid=qid)
+                question = get_question("regulars",qid)
+            if question == "error":
+                return "error"
             #set session variable for question info
             session["current_question"] = {"table": "regulars", "id": qid}
             return jsonify(question[0])
         #if random number corresponds with themed question, select question and theme and return
         if qid <= round1_max:
-            question = db.execute("SELECT question, theme FROM round1 WHERE id=:qid", qid=qid)
+            question = get_question_and_theme("round1",qid)
             #keep getting random row until successful
             while not question:
                 qid = random.randint(1,round1_max)
-                question = db.execute("SELECT question, theme FROM round1 WHERE id=:qid", qid=qid)
+                question = get_question_and_theme("round1",qid)
+            if question == "error":
+                return "error"
             #set session variable for question info
             session["current_question"] = {"table": "round1", "id": qid}
             return jsonify(question[0])
         #if random number corresponds with picture table, select picture and question and return
         if qid > round1_max+reg_max:
             qid -= round1_max+reg_max
-            question = db.execute("SELECT question FROM pic_questions WHERE id=:qid", qid=qid)
+            question = get_question("pic_questions",qid)
             #keep getting random row until successful
             while not question:
                 qid = random.randint(1,pic_max)
-                question = db.execute("SELECT question FROM pic_questions WHERE id=:qid", qid=qid)
+                question = get_question("pic_questions",qid)
+            if question == "error":
+                return "error"
             #set session variable for question info
             session["current_question"] = {"table": "pic_questions", "id": qid}
             #get pic and save it via blob_to_file
@@ -279,3 +314,36 @@ def answers():
         if table == "pic_questions":
             answer = db.execute("SELECT answer FROM pic_questions WHERE id=:qid", qid=qid)
         return jsonify(answer[0]["answer"])
+
+@app.route("/cat", methods=["POST","GET"])
+def cat():
+    #add selected categories to session list
+    if request.method == "POST":
+        cats = []
+        if request.form.get("geo"):
+            cats.append("geo")
+        if request.form.get("ush"):
+            cats.append("ush")
+        if request.form.get("world history"):
+            cats.append("world history")
+        if request.form.get("lit"):
+            cats.append("lit")
+        if request.form.get("inventors"):
+            cats.append("inventors")
+        if request.form.get("music"):
+            cats.append("music")
+        if request.form.get("art"):
+            cats.append("art")
+        if request.form.get("sci"):
+            cats.append("sci")
+        if request.form.get("math"):
+            cats.append("math")
+        if request.form.get("misc"):
+            cats.append("misc")
+        if request.form.get("all"):
+            cats = None
+        print(cats)
+        session["categories"] = cats
+        return redirect("/")
+    else:
+        return render_template("categories.html")
