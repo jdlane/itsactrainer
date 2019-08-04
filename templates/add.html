@@ -79,10 +79,12 @@
         if(val == "reg"){
             document.querySelector("#pic").style.visibility = "hidden";
             document.querySelector("#theme").style.visibility = "hidden";
+            document.querySelector("#theme").innerHTML = "";
         }
         if(val == "pic"){
             document.querySelector("#pic").style.visibility = "visible";
             document.querySelector("#theme").style.visibility = "hidden";
+            document.querySelector("#theme").innerHTML = "";
         }
     });
 

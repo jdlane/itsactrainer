@@ -11,6 +11,9 @@
 <button class="btn btn-primary" id="next" onclick="next();">Next</button>
 
 <script>
+
+    var last = false;
+
     document.addEventListener("DOMContentLoaded", () =>{
         document.querySelector("#next").style.visibility = "hidden";
         document.querySelector("#check").style.visibility = "visible";
@@ -35,6 +38,9 @@
 
     function loadQuestion(){
         $.get("/questions?round=0", (info) => {
+           if(info==="error"){
+               window.location.href = "/";
+           }
            if(info.last){
                window.location.href = "/";
            }else{
@@ -46,8 +52,11 @@
 
     function loadAnswer(){
         $.get("/answers?round=0", (answer) => {
+            if(answer["last"]){
+
+            }
            document.querySelector("#next").style.visibility = "visible";
-           document.querySelector("#answer").innerHTML = answer;
+           document.querySelector("#answer").innerHTML = answer["answer"];
            document.querySelector("input").disabled = true;
            document.querySelector("#check").style.visibility = "hidden";
         });

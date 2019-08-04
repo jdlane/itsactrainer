@@ -2,7 +2,6 @@ from flask import Flask, render_template, redirect, request, session, jsonify
 from flask_session import Session
 from tempfile import mkdtemp
 from cs50 import SQL
-from tempfile import mkstemp, NamedTemporaryFile #TODO
 import random
 import os
 
@@ -16,7 +15,7 @@ Session(app)
 
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
-db = SQL("postgres://oixtuuuzwefixg:cbe1e8eaa7c8956e26469b418ebf1f14ce60fa545712d90bf5ae6a7a81b30aa6@ec2-174-129-41-127.compute-1.amazonaws.com:5432/ddl1v1b0r2nnud")
+db = SQL("postgres://clvcdjulxcmawa:dd6973b3af8f46885a3d37b2c9e847d432b71293c7fdaaf939bc8423d7c7f372@ec2-174-129-226-234.compute-1.amazonaws.com:5432/d98vg73hcfavuv")
 
 def blob_to_file(ext, blob):
     blob = bytes(blob)
@@ -69,6 +68,15 @@ def get_question_and_theme(table, qid):
         question = db.execute(string, qid=qid)
     return question
 
+def get_selected_layout():
+    if not session.get("game_layout"):
+        return "error"
+    arr = []
+    for key in session.get("game_layout"):
+        if session.get("game_layout")[key]:
+            arr.append(str(key))
+    return arr
+
 # Ensure responses aren't cached
 @app.after_request
 def after_request(response):
@@ -79,6 +87,7 @@ def after_request(response):
 
 @app.route("/")
 def index():
+    db.execute("UPDATE regulars SET category='sci' WHERE id=3;")
     return render_template("index.html")
 
 @app.route("/error",methods=["GET"])
@@ -179,6 +188,9 @@ def game():
         #set session stored question index to 0
         session["question_num"] = 0;
 
+        #set session stored round index to 0
+        session["round"] = 0;
+
         #redirect to home if nothing checked
         if not round1 and not picture and not individual and not bonus and not grabbag and not everything:
             return redirect("/")
@@ -186,6 +198,7 @@ def game():
         session["game_layout"] = gameLayout
         #load template of first round chosen
         layout = session.get("game_layout")
+        print(get_selected_layout())
         if not layout:
             print("not layout")
             return redirect("/")
@@ -194,7 +207,7 @@ def game():
         if layout["individual"] == True:
             return render_template("individual.html")
         if layout["picture"] == True:
-            return render_template("pictrue.html")
+            return render_template("picture.html")
         if layout["bonus"] == True:
             return render_template("bonus.html")
         if layout["grab bag"] == True:
@@ -203,7 +216,7 @@ def game():
 @app.route("/round1")
 def round1():
     if not session.get("round1"):
-        max_id = db.execute("SELECT id FROM round1;")[0]["id"]
+        max_id = db.execute("SELECT id FROM round1 ORDER BY id DESC LIMIT 1")[0]["id"]
         question_queue = []
         while len(question_queue) < 8:
             qid = random.randint(1,max_id)
@@ -224,7 +237,7 @@ def questions():
         else:
             num = session.get("question_num")
             session["question_num"] = session["question_num"]+1
-            if(num>=len(session.get("round1"))):
+            if num>=len(session.get("round1")):
                 return jsonify({'last':True})
             dic = session.get("round1")[num]
             dic.update({'last': False})
@@ -299,11 +312,12 @@ def questions():
 def answers():
     if request.args.get("round") == "0":
         if not session.get("round1"):
-            return redirect("/")
+            return "error"
         else:
-            if(session.get("question_num")>len(session.get("round1"))):
-                answer = db.execute("SELECT answer FROM round1 WHERE id=:qid", qid=session.get("round1")[session.get("question_num")-1]["id"])
-                return jsonify(answer[0]["answer"])
+            last = session.get("question_num")<len(session.get("round1"))
+            answer = db.execute("SELECT answer FROM round1 WHERE id=:qid", qid=session.get("round1")[session.get("question_num")-1]["id"])
+            answer = {"answer": answer[0]["answer"], "last": last}
+            return jsonify(answer)
     if request.args.get("round") == "infinite":
         table = session.get("current_question")["table"]
         qid = session.get("current_question")["id"]
@@ -314,6 +328,12 @@ def answers():
         if table == "pic_questions":
             answer = db.execute("SELECT answer FROM pic_questions WHERE id=:qid", qid=qid)
         return jsonify(answer[0]["answer"])
+
+@app.route("/nextround", methods=["GET"])
+def next():
+    session["round"] = session.get("round")+1
+
+
 
 @app.route("/cat", methods=["POST","GET"])
 def cat():
@@ -342,7 +362,6 @@ def cat():
             cats.append("misc")
         if request.form.get("all"):
             cats = None
-        print(cats)
         session["categories"] = cats
         return redirect("/")
     else:
