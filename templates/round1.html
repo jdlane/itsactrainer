@@ -37,12 +37,12 @@
     }
 
     function loadQuestion(){
-        $.get("/questions?round=0", (info) => {
+        $.get("/questions?round=round1", (info) => {
            if(info==="error"){
                window.location.href = "/";
            }
            if(info.last){
-               window.location.href = "/";
+               window.location.href = "/nextround";
            }else{
            document.querySelector("#q").innerHTML = info["question"];
            document.querySelector("#theme").innerHTML = info["theme"];
@@ -51,10 +51,7 @@
     }
 
     function loadAnswer(){
-        $.get("/answers?round=0", (answer) => {
-            if(answer["last"]){
-
-            }
+        $.get("/answers?round=round1", (answer) => {
            document.querySelector("#next").style.visibility = "visible";
            document.querySelector("#answer").innerHTML = answer["answer"];
            document.querySelector("input").disabled = true;
