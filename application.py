@@ -87,7 +87,6 @@ def after_request(response):
 
 @app.route("/")
 def index():
-    db.execute("UPDATE regulars SET category='sci' WHERE id=3;")
     return render_template("index.html")
 
 @app.route("/error",methods=["GET"])
@@ -153,8 +152,8 @@ def game():
         #set game layout based on user check box input
         gameLayout = {
             "round1": False,
-            "picture": False,
             "individual": False,
+            "picture": False,
             "bonus": False,
             "grab bag": False
         }
@@ -169,10 +168,10 @@ def game():
         if everything:
             gameLayout = {
                 "round1": True,
-                "picture": True,
                 "individual": True,
+                "picture": True,
                 "bonus": True,
-                "grab bag": True
+                "grabbag": True
             }
         if round1:
             gameLayout["round1"] = True
@@ -183,7 +182,7 @@ def game():
         if bonus:
             gameLayout["bonus"] = True
         if grabbag:
-            gameLayout["grab bag"] = True
+            gameLayout["grabbag"] = True
 
         #set session stored question index to 0
         session["question_num"] = 0;
@@ -198,20 +197,19 @@ def game():
         session["game_layout"] = gameLayout
         #load template of first round chosen
         layout = session.get("game_layout")
-        print(get_selected_layout())
         if not layout:
             print("not layout")
             return redirect("/")
         if layout["round1"] == True:
             return redirect("/round1")
         if layout["individual"] == True:
-            return render_template("individual.html")
+            return redirect("/individual")
         if layout["picture"] == True:
-            return render_template("picture.html")
+            return redirect("/picture")
         if layout["bonus"] == True:
-            return render_template("bonus.html")
-        if layout["grab bag"] == True:
-            return render_template("grabbag.html")
+            return redirect("/bonus")
+        if layout["grabbag"] == True:
+            return redirect("/grabbag")
 
 @app.route("/round1")
 def round1():
@@ -220,7 +218,8 @@ def round1():
         question_queue = []
         while len(question_queue) < 8:
             qid = random.randint(1,max_id)
-            if not qid in question_queue:
+            id_exists = db.execute("SELECT id FROM round1 WHERE id=:qid",qid=qid)
+            if not qid in question_queue and id_exists:
                 question_queue.append(qid)
         list_string = str(question_queue).replace("[","").replace("]","")
         questions = db.execute("SELECT question, theme, id FROM round1 WHERE id IN (:qids) ORDER BY RANDOM()", qids=question_queue)
@@ -229,17 +228,48 @@ def round1():
             session["round1"].append(question)
     return render_template("round1.html")
 
+@app.route("/picture")
+def picture():
+    if not session.get("picture"):
+        max_id = db.execute("SELECT id FROM pic_questions ORDER BY id DESC LIMIT 1")[0]["id"]
+        question_queue = []
+        while len(question_queue) < 8:
+            qid = random.randint(1,max_id)
+            id_exists = db.execute("SELECT id FROM pic_questions WHERE id=:qid",qid=qid)
+            if not qid in question_queue and id_exists:
+                question_queue.append(qid)
+        list_string = str(question_queue).replace("[","").replace("]","")
+        questions = db.execute("SELECT question, id FROM pic_questions WHERE id IN (:qids) ORDER BY RANDOM()", qids=question_queue)
+        session["picture"] = []
+        for question in questions:
+            session["picture"].append(question)
+    return render_template("picture.html")
+
 @app.route("/questions", methods=["GET"])
 def questions():
-    if request.args.get("round") == "0":
+    if request.args.get("round") == "round1":
         if not session.get("round1"):
-            return redirect("/")
+            return jsonify("error")
         else:
             num = session.get("question_num")
             session["question_num"] = session["question_num"]+1
             if num>=len(session.get("round1")):
                 return jsonify({'last':True})
             dic = session.get("round1")[num]
+            dic.update({'last': False})
+            return jsonify(dic)
+    if request.args.get("round") == "picture":
+        if not session.get("picture"):
+            return jsonify("error")
+        else:
+            num = session.get("question_num")
+            session["question_num"] = session["question_num"]+1
+            if num>=len(session.get("picture")):
+                return jsonify({'last':True})
+            dic = session.get("picture")[num]
+            pic = db.execute("SELECT img, type FROM pictures WHERE id=:qid", qid=dic["id"])
+            pic = blob_to_file(pic[0]["type"], pic[0]["img"])
+            dic.update({"pic":pic})
             dic.update({'last': False})
             return jsonify(dic)
     if request.args.get("round") == "infinite" and not request.args.get("letters"):
@@ -310,12 +340,20 @@ def questions():
 
 @app.route("/answers", methods=["GET"])
 def answers():
-    if request.args.get("round") == "0":
+    if request.args.get("round") == "round1":
         if not session.get("round1"):
             return "error"
         else:
             last = session.get("question_num")<len(session.get("round1"))
             answer = db.execute("SELECT answer FROM round1 WHERE id=:qid", qid=session.get("round1")[session.get("question_num")-1]["id"])
+            answer = {"answer": answer[0]["answer"], "last": last}
+            return jsonify(answer)
+    if request.args.get("round") == "picture":
+        if not session.get("picture"):
+            return "error"
+        else:
+            last = session.get("question_num")<len(session.get("picture"))
+            answer = db.execute("SELECT answer FROM pic_questions WHERE id=:qid", qid=session.get("picture")[session.get("question_num")-1]["id"])
             answer = {"answer": answer[0]["answer"], "last": last}
             return jsonify(answer)
     if request.args.get("round") == "infinite":
@@ -332,6 +370,12 @@ def answers():
 @app.route("/nextround", methods=["GET"])
 def next():
     session["round"] = session.get("round")+1
+    session["question_num"] = 0
+    selected = get_selected_layout()
+    if session.get("round") >= len(selected):
+        return render_template("match_done.html")
+    return redirect("/"+selected[session.get("round")])
+
 
 
 
