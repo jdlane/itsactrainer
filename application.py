@@ -123,7 +123,7 @@ def add():
         answer = request.form.get("answer")
         category = request.form.get("category")
         if category == "category" or not question or not answer:
-            return render_template("round1", error="fill all fields")
+            return render_template("error.html", error="fill all fields")
         #if regular question, add to table and return template
         if not request.form.get("theme") and not request.files["pic"]:
             db.execute("INSERT INTO regulars (question,answer,category) VALUES (:question,:answer,:category)",question=question,answer=answer,category=category)
@@ -142,7 +142,7 @@ def add():
             pic = bytearray(pic)
             pic = "".join(format(x, "02x") for x in pic)
             db.execute("INSERT INTO pictures (img, type) VALUES (:img,:type)", img=pic, type=filetype)
-            db.execute("INSERT INTO pic_questions (question, answer) VALUES (:question,:answer)",question=question,answer=answer)
+            db.execute("INSERT INTO pic_questions (question, answer, category) VALUES (:question,:answer, :category)",question=question,answer=answer,category=category)
             return render_template("add.html", type="pic")
 
 @app.route("/game", methods=["POST"])
@@ -245,6 +245,53 @@ def picture():
             session["picture"].append(question)
     return render_template("picture.html")
 
+@app.route("/bonus")
+def bonus():
+    if not session.get("bonus"):
+        reg_max = db.execute("SELECT id FROM regulars ORDER BY id DESC LIMIT 1")[0]["id"]
+        pic_max = db.execute("SELECT id FROM pic_questions ORDER BY id DESC LIMIT 1")[0]["id"]
+        math_ids = db.execute("SELECT id FROM pic_questions WHERE category='math'")
+        reg_questions = []
+        while len(reg_questions) < 6:
+            qid = random.randint(1,reg_max)
+            id_exists = db.execute("SELECT id FROM regulars WHERE id=:qid",qid=qid)
+            if not qid in reg_questions and id_exists:
+                reg_questions.append(qid)
+        pic_question = 0
+        while not pic_question:
+            qid = random.randint(1,pic_max)
+            if qid in math_ids:
+                id_exists = False
+            else:
+                id_exists = db.execute("SELECT id FROM pic_questions WHERE id=:qid AND category!='math'",qid=qid)
+            if id_exists:
+                pic_question = qid
+        math_question = 0
+        while not math_question:
+            qid = random.randint(0,len(math_ids)-1)
+            qid = math_ids[qid]["id"]
+            id_exists = db.execute("SELECT id FROM pic_questions WHERE id=:qid AND category='math'", qid=qid)
+            if id_exists:
+                math_question = qid
+        questions = []
+        first_three = db.execute("SELECT question, id FROM regulars WHERE id IN (:one,:two,:three) ORDER BY RANDOM()",one=reg_questions[0],two=reg_questions[1],three=reg_questions[2])
+        for q in first_three:
+            q.update({'pic': False})
+            questions.append(q)
+        pq = db.execute("SELECT question, id FROM pic_questions WHERE id=:qid",qid=pic_question)[0]
+        pq.update({'pic': True})
+        questions.append(pq)
+        next_string = str(reg_questions[3:6]).replace("[","").replace("]","")
+        next_three = db.execute("SELECT question, id FROM regulars WHERE id IN (:one,:two,:three) ORDER BY RANDOM()", one=reg_questions[3],two=reg_questions[4],three=reg_questions[5])
+        for q in next_three:
+            q.update({'pic': False})
+            questions.append(q)
+        mq = db.execute("SELECT question, id FROM pic_questions WHERE id=:qid",qid=math_question)[0]
+        mq.update({'pic': True})
+        questions.append(mq)
+        session["bonus"] = questions
+    return render_template("bonus.html")
+
 @app.route("/questions", methods=["GET"])
 def questions():
     if request.args.get("round") == "round1":
@@ -270,6 +317,23 @@ def questions():
             pic = db.execute("SELECT img, type FROM pictures WHERE id=:qid", qid=dic["id"])
             pic = blob_to_file(pic[0]["type"], pic[0]["img"])
             dic.update({"pic":pic})
+            dic.update({'last': False})
+            return jsonify(dic)
+    if request.args.get("round") == "bonus":
+        if not session.get("bonus"):
+            return jsonify("error")
+        else:
+            num = session.get("question_num")
+            session["question_num"] = session["question_num"]+1
+            if num>=len(session.get("bonus")):
+                return jsonify({'last':True})
+            dic = session.get("bonus")[num]
+            if dic["pic"]:
+                pic = db.execute("SELECT img, type FROM pictures WHERE id=:qid", qid=dic["id"])
+                pic = blob_to_file(pic[0]["type"], pic[0]["img"])
+                dic.update({"pic":pic})
+            else:
+                dic.update({"pic":False})
             dic.update({'last': False})
             return jsonify(dic)
     if request.args.get("round") == "infinite" and not request.args.get("letters"):
@@ -356,6 +420,17 @@ def answers():
             answer = db.execute("SELECT answer FROM pic_questions WHERE id=:qid", qid=session.get("picture")[session.get("question_num")-1]["id"])
             answer = {"answer": answer[0]["answer"], "last": last}
             return jsonify(answer)
+    if request.args.get("round") == "bonus":
+        if not session.get("bonus"):
+            return "error"
+        else:
+            last = session.get("question_num")<len(session.get("bonus"))
+            if session.get("bonus")[session.get("question_num")-1]["pic"]:
+                answer = db.execute("SELECT answer FROM pic_questions WHERE id=:qid", qid=session.get("bonus")[session.get("question_num")-1]["id"])
+            else:
+                answer = db.execute("SELECT answer FROM regulars WHERE id=:qid", qid=session.get("bonus")[session.get("question_num")-1]["id"])
+            answer = {"answer": answer[0]["answer"], "last": last}
+            return jsonify(answer)
     if request.args.get("round") == "infinite":
         table = session.get("current_question")["table"]
         qid = session.get("current_question")["id"]
@@ -373,10 +448,9 @@ def next():
     session["question_num"] = 0
     selected = get_selected_layout()
     if session.get("round") >= len(selected):
+        print("done")
         return render_template("match_done.html")
     return redirect("/"+selected[session.get("round")])
-
-
 
 
 @app.route("/cat", methods=["POST","GET"])
