@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block main %}
+
+<h1 class="font-wight-bold text-justify text-primary">
+Bonus Round
+<div class="spinner-border" role="status" id="load">
+  <span class="sr-only">Loading...</span>
+</div>
+</h1>
+<img src="" id="pic" class="img-fluid"></img>
+<h5 id="q"></h5>
+<input type="text" placeholder="Answer">
+<p id="answer"></p>
+<button class="btn btn-primary" id="check" onclick="loadAnswer();" autofocus>Check</button>
+<br/>
+<button class="btn btn-primary" id="next" onclick="next();">Next</button>
+
+<script>
+
+    var last = false;
+
+    document.addEventListener("DOMContentLoaded", () =>{
+        document.querySelector("#next").style.visibility = "hidden";
+        document.querySelector("#check").style.visibility = "visible";
+        document.querySelector("#load").style.visibility = "visible";
+        loadQuestion();
+    });
+
+    document.querySelector("input").addEventListener('keypress', (e) => {
+        if(e.key==="Enter"){
+            if(document.querySelector("#load").style.visibility === "hidden"){
+            loadAnswer();
+            }
+        }
+    });
+
+    function next(){
+        document.querySelector("#load").style.visibility = "visible";
+        loadQuestion();
+        document.querySelector("#answer").innerHTML = "";
+        document.querySelector("input").disabled = false;
+        document.querySelector("input").value = "";
+        document.querySelector("input").focus();
+        document.querySelector("#next").style.visibility = "hidden";
+        document.querySelector("#check").style.visibility = "visible";
+    }
+
+    function loadQuestion(){
+        $.get("/questions?round=bonus", (info) => {
+           if(info==="error"){
+               window.location.href = "/";
+           }
+           if(info.last){
+               window.location.href = "/nextround";
+           }else{
+           if(info["pic"]){
+           document.querySelector("#pic").style = "display: inline";
+           document.querySelector("#pic").src = info["pic"];
+           pic = true;
+           }else{
+           document.querySelector("#pic").style = "display: none";
+           pic = false;
+           }
+           document.querySelector("#q").innerHTML = info["question"];
+           }
+          document.querySelector("#load").style.visibility = "hidden";
+        });
+    }
+
+    function loadAnswer(){
+        document.querySelector("#load").style.visibility = "visible";
+        $.get("/answers?round=bonus&pic=true", (answer) => {
+           document.querySelector("#next").style.visibility = "visible";
+           document.querySelector("#answer").innerHTML = answer["answer"];
+           document.querySelector("input").disabled = true;
+           document.querySelector("#check").style.visibility = "hidden";
+          document.querySelector("#load").style.visibility = "hidden";
+        });
+    }
+</script>
+
+{% endblock %}

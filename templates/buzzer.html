@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block main %}
+
+<h1 class="font-wight-bold text-justify text-primary">Buzzer Practice</h1>
+<br>
+<img src="" id="pic" class="img-fluid"></img>
+<p id="theme"></p>
+<h5 id="q"></h5>
+<input type="text" id="in" placeholder="Answer">
+<p id="answer"></p>
+<button class="btn btn-danger" id="buzz" onclick="buzz();">Buzzer</button>
+<button class="btn btn-primary" id="check" onclick="loadAnswer();" autofocus>Check</button>
+<br/>
+<button class="btn btn-primary" id="next" onclick="next();">Next</button>
+
+<script>
+
+    var buzzed = false;
+    var finished = false;
+
+    document.addEventListener("DOMContentLoaded", () =>{
+        document.querySelector("#in").style = "display: none";
+        document.querySelector("#next").style = "display: none";
+        document.querySelector("#check").style = "display: none";
+        document.querySelector("#pic").style = "display: none";
+        loadQuestion();
+    });
+
+    document.querySelector("input").addEventListener('keypress', (e) => {
+        if(e.key==="Enter"){
+            loadAnswer();
+        }
+    });
+
+    function buzz(){
+        buzzed = true;
+    }
+
+    function next(){
+        buzzed = false;
+        finished = false;
+        document.querySelector("#q").innerHTML = "";
+        document.querySelector("#in").style = "display: none";
+        document.querySelector("#check").style = "display: none";
+        loadQuestion();
+        document.querySelector("input").disabled = false;
+        document.querySelector("#answer").innerHTML = "";
+        document.querySelector("input").value = "";
+        document.querySelector("#next").style = "display: none";
+    }
+
+    function loadQuestion(){
+        $.get("/questions?round=infinite", (info) => {
+           if(info["theme"]){
+               document.querySelector("#theme").innerHTML = info["theme"];
+           }else{
+               document.querySelector("#theme").innerHTML = "";
+           }
+           if(info["pic"]){
+               document.querySelector("#pic").src = info["pic"];
+               document.querySelector("#pic").style = "width: 300; height:300;"
+               document.querySelector("#pic").style = "display: inline;";
+           }else{
+               document.querySelector("#pic").style = "display: none;";
+           }
+        });
+        document.querySelector("#q").innerHTML = "";
+        nextLetter();
+    }
+
+    function nextLetter(){
+        if(!buzzed&&!finished){
+        $.get("/questions?round=infinite&letters=1", (info) => {
+           if(info === "no question"){
+               next();
+           }else if(info === "last"){
+               finished = true;
+           }else{
+                if(info["index"]==0){
+                    document.querySelector("#q").innerHTML = document.querySelector("#q").innerHTML+info["question"];
+                }else if(document.querySelector("#q").innerHTML !== ""){
+                    document.querySelector("#q").innerHTML = document.querySelector("#q").innerHTML+info["question"];
+                }
+           }
+        });
+        setTimeout(nextLetter, 100)
+        }else{
+            document.querySelector("#in").style = "display: inline";
+            document.querySelector("#check").style = "display: inline";
+        }
+    }
+
+    function loadAnswer(){
+        $.get("/answers?round=infinite", (answer) => {
+           document.querySelector("#next").style = "display: inline";
+           document.querySelector("#answer").innerHTML = answer;
+           document.querySelector("input").disabled = true;
+           document.querySelector("#check").style = "display: none";
+        });
+    }
+</script>
+
+{% endblock %}

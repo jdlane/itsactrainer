@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block main %}
+
+<h3>Choose categories to recieve questions from</h3>
+
+<form action="/cat" method="POST">
+
+    <input class="form-control" type="checkbox" name="all">All</input>
+    <input class="form-control" type="checkbox" name="geo">Geography</input>
+    <input class="form-control" type="checkbox" name="ush">US History</input>
+    <input class="form-control" type="checkbox" name="world history">World History</input>
+    <input class="form-control" type="checkbox" name="lit">Literature</input>
+    <input class="form-control" type="checkbox" name="inventors">Inventors</input>
+    <input class="form-control" type="checkbox" name="music">Music</input>
+    <input class="form-control" type="checkbox" name="art">Art</input>
+    <input class="form-control" type="checkbox" name="sci">Science</input>
+    <input class="form-control" type="checkbox" name="math">Math</input>
+    <input class="form-control" type="checkbox" name="misc">Miscellaneous</input>
+    <br/>
+    <input type="submit" class="btn btn-primary">
+
+</form>
+
+{% endblock %}
