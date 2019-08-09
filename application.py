@@ -50,11 +50,17 @@ def get_question(table, qid):
         question = db.execute("SELECT question FROM "+table+" WHERE id=:qid", qid=qid)
     else:
         cats = str(session.get("categories")).replace("[","(").replace("]",")")
-        if not db.execute("SELECT id FROM "+table+" WHERE id=:qid AND category IN "+cats, qid=qid):
+        cat_qs = db.execute("SELECT id FROM "+table+" WHERE category IN "+cats)
+        if not cat_qs:
             return "error"
-        string = "SELECT question FROM "+table+" WHERE id=:qid AND category IN "+cats
+        if qid in cat_qs:
+            string = "SELECT question FROM "+table+" WHERE id=:qid AND category IN "+cats
+        else:
+            index = random.randint(0,len(cat_qs)-1)
+            string = "SELECT question FROM "+table+" WHERE id=:qid AND category IN "+cats
+            qid = cat_qs[index]["id"]
         question = db.execute(string, qid=qid)
-    return question
+    return {"question": question, "qid": qid}
 
 def get_question_and_theme(table, qid):
     question = None
@@ -62,11 +68,17 @@ def get_question_and_theme(table, qid):
         question = db.execute("SELECT question, theme FROM "+table+" WHERE id=:qid", qid=qid)
     else:
         cats = str(session.get("categories")).replace("[","(").replace("]",")")
-        if not db.execute("SELECT id FROM "+table+" WHERE id=:qid AND category IN "+cats, qid=qid):
+        cat_qs = db.execute("SELECT id FROM "+table+" WHERE category IN "+cats)
+        if not cat_qs:
             return "error"
-        string = "SELECT question, theme FROM "+table+" WHERE id=:qid AND category IN "+cats
+        if qid in cat_qs:
+            string = "SELECT question, theme FROM "+table+" WHERE id=:qid AND category IN "+cats
+        else:
+            index = random.randint(0,len(cat_qs)-1)
+            string = "SELECT question, theme FROM "+table+" WHERE id=:qid AND category IN "+cats
+            qid = cat_qs[index]["id"]
         question = db.execute(string, qid=qid)
-    return question
+    return {"question": question, "qid": qid}
 
 def get_selected_layout():
     if not session.get("game_layout"):
@@ -340,9 +352,26 @@ def questions():
         #set letter index to 0 for buzzer mode
         session["q_letter"] = 0
         #get max ids for each question table
-        round1_max = db.execute("SELECT id FROM round1 ORDER BY id DESC LIMIT 1")[0]["id"]
-        reg_max = db.execute("SELECT id FROM regulars ORDER BY id DESC LIMIT 1")[0]["id"]
-        pic_max = db.execute("SELECT id FROM pic_questions ORDER BY id DESC LIMIT 1")[0]["id"]
+        if session.get("categories"):
+            cats = str(session.get("categories")).replace("[","(").replace("]",")")
+            try:
+                round1_max = db.execute("SELECT id FROM round1 WHERE category IN "+cats+" ORDER BY id DESC LIMIT 1")[0]["id"]
+            except:
+                round1_max = 0
+            try:
+                reg_max = db.execute("SELECT id FROM regulars WHERE category IN "+cats+" ORDER BY id DESC LIMIT 1")[0]["id"]
+            except:
+                reg_max = 0
+            try:
+                pic_max = db.execute("SELECT id FROM pic_questions WHERE category IN "+cats+" ORDER BY id DESC LIMIT 1")[0]["id"]
+            except:
+                pic_max = 0
+            if not round1_max and not reg_max and not pic_max:
+                return "error"
+        else:
+            round1_max = db.execute("SELECT id FROM round1 ORDER BY id DESC LIMIT 1")[0]["id"]
+            reg_max = db.execute("SELECT id FROM regulars ORDER BY id DESC LIMIT 1")[0]["id"]
+            pic_max = db.execute("SELECT id FROM pic_questions ORDER BY id DESC LIMIT 1")[0]["id"]
         #generate random number from 1 to all max ids combined
         qid = random.randint(1,round1_max+reg_max+pic_max)
         #if random number corresponds with regular question select question and return
@@ -356,8 +385,8 @@ def questions():
             if question == "error":
                 return "error"
             #set session variable for question info
-            session["current_question"] = {"table": "regulars", "id": qid}
-            return jsonify(question[0])
+            session["current_question"] = {"table": "regulars", "id": question["qid"]}
+            return jsonify(question["question"][0])
         #if random number corresponds with themed question, select question and theme and return
         if qid <= round1_max:
             question = get_question_and_theme("round1",qid)
@@ -368,8 +397,8 @@ def questions():
             if question == "error":
                 return "error"
             #set session variable for question info
-            session["current_question"] = {"table": "round1", "id": qid}
-            return jsonify(question[0])
+            session["current_question"] = {"table": "round1", "id": question["qid"]}
+            return jsonify(question["question"][0])
         #if random number corresponds with picture table, select picture and question and return
         if qid > round1_max+reg_max:
             qid -= round1_max+reg_max
@@ -381,12 +410,12 @@ def questions():
             if question == "error":
                 return "error"
             #set session variable for question info
-            session["current_question"] = {"table": "pic_questions", "id": qid}
+            session["current_question"] = {"table": "pic_questions", "id": question["qid"]}
             #get pic and save it via blob_to_file
-            pic = db.execute("SELECT img, type FROM pictures WHERE id=:qid", qid=qid)
+            pic = db.execute("SELECT img, type FROM pictures WHERE id=:qid", qid=question["qid"])
             pic = blob_to_file(pic[0]["type"], pic[0]["img"])
-            question[0].update({"pic":pic})
-            return jsonify(question[0])
+            question["question"][0].update({"pic":pic})
+            return jsonify(question["question"][0])
     #if one letter at a time, return next letter of question
     if request.args.get("round") == "infinite" and request.args.get("letters"):
         #track new question by storing question id
