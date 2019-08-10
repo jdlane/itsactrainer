@@ -379,7 +379,7 @@ def questions():
             qid -= round1_max
             question = get_question("regulars",qid)
             #keep getting random row until successful
-            while not question:
+            while not question["question"]:
                 qid = random.randint(1,reg_max)
                 question = get_question("regulars",qid)
             if question == "error":
@@ -391,7 +391,7 @@ def questions():
         if qid <= round1_max:
             question = get_question_and_theme("round1",qid)
             #keep getting random row until successful
-            while not question:
+            while not question["question"]:
                 qid = random.randint(1,round1_max)
                 question = get_question_and_theme("round1",qid)
             if question == "error":
@@ -404,7 +404,7 @@ def questions():
             qid -= round1_max+reg_max
             question = get_question("pic_questions",qid)
             #keep getting random row until successful
-            while not question:
+            while not question["question"]:
                 qid = random.randint(1,pic_max)
                 question = get_question("pic_questions",qid)
             if question == "error":
