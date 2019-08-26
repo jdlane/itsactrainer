@@ -64,10 +64,12 @@
     if(document.querySelector("select").value == "reg"){
         document.querySelector("#pic").style.visibility = "hidden";
         document.querySelector("#theme").style.visibility = "hidden";
+        document.querySelector("#theme").value = "";
     }
     if(document.querySelector("select").value == "pic"){
         document.querySelector("#pic").style.visibility = "visible";
         document.querySelector("#theme").style.visibility = "hidden";
+        document.querySelector("#theme").value = "";
     }
 
     document.querySelector("select").addEventListener('change', () => {
@@ -75,16 +77,18 @@
         if(val == "first"){
             document.querySelector("#pic").style.visibility = "hidden";
             document.querySelector("#theme").style.visibility = "visible";
+            document.querySelector("#pic").value = "";
         }
         if(val == "reg"){
             document.querySelector("#pic").style.visibility = "hidden";
             document.querySelector("#theme").style.visibility = "hidden";
-            document.querySelector("#theme").innerHTML = "";
+            document.querySelector("#theme").value = "";
+            document.querySelector("#pic").value = "";
         }
         if(val == "pic"){
             document.querySelector("#pic").style.visibility = "visible";
             document.querySelector("#theme").style.visibility = "hidden";
-            document.querySelector("#theme").innerHTML = "";
+            document.querySelector("#theme").value = "";
         }
     });
 
