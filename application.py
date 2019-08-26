@@ -4,6 +4,8 @@ from tempfile import mkdtemp
 from cs50 import SQL
 import random
 import os
+import atexit
+from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__, static_url_path = "", static_folder = "statics")
 
@@ -13,9 +15,39 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
+#set cleanup to execute every hour
+scheduler = BackgroundScheduler()
+def cleanup_pics():
+    os.remove("statics/questionpics")
+    os.mkdir("statics/questionpics")
+    pic_ids=[]
+scheduler.add_job(func=cleanup_pics, trigger="interval", hours=3, id="job_id", replace_existing=True)
+scheduler.start()
+atexit.register(lambda: scheduler.shutdown())
+
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 db = SQL("postgres://clvcdjulxcmawa:dd6973b3af8f46885a3d37b2c9e847d432b71293c7fdaaf939bc8423d7c7f372@ec2-174-129-226-234.compute-1.amazonaws.com:5432/d98vg73hcfavuv")
+
+pic_ids = []
+
+def create_pic_id():
+    pid = 0
+    while pid in pic_ids:
+        pid+=1
+    pic_ids.append(pid)
+    session["pic_id"] = pid
+
+def delete_pic():
+    try:
+        os.remove("statics/questionpics/"+str(session.get("pic_id"))+".png")
+    except:
+        try:
+            os.remove("statics/questionpics/"+str(session.get("pic_id"))+".jpg")
+        except:
+            print("file not found")
+    pic_ids.remove(session.get("pic_id"))
+    session["pic_id"] = None
 
 def blob_to_file(ext, blob):
     blob = bytes(blob)
@@ -23,26 +55,26 @@ def blob_to_file(ext, blob):
     blob = bytearray.fromhex(blob)
     if ext == "png":
         try:
-            os.remove("statics/pic.png")
+            os.remove("statics/questionpics/"+str(session.get("pic_id"))+".png")
         except:
             print("file not found")
-        file = open("statics/pic.png", "x")
+        file = open("statics/questionpics/"+str(session.get("pic_id"))+".png", "x")
         file.close();
-        file = open("statics/pic.png", "wb")
+        file = open("statics/questionpics/"+str(session.get("pic_id"))+".png", "wb")
         file.write(blob)
         file.close()
-        return "pic.png"
+        return "questionpics/"+str(session.get("pic_id"))+".png"
     if ext == "jpg" or ext == "jpeg":
         try:
-            os.remove("statics/pic.jpg")
+            os.remove("statics/questionpics/"+str(session.get("pic_id"))+".jpg")
         except:
             print("file not found")
-        file = open("statics/pic.jpg", "x")
+        file = open("statics/questionpics/"+str(session.get("pic_id"))+".jpg", "x")
         file.close();
-        file = open("statics/pic.jpg", "wb")
+        file = open("statics/questionpics/"+str(session.get("pic_id"))+".jpg", "wb")
         file.write(blob)
         file.close()
-        return "pic.jpg"
+        return "questionpics/"+str(session.get("pic_id"))+".jpg"
 
 def get_question(table, qid):
     question = None
@@ -89,6 +121,11 @@ def get_selected_layout():
             arr.append(str(key))
     return arr
 
+def print_table(name):
+    rows = db.execute("SELECT * FROM "+name)
+    for item in rows:
+        print(item)
+
 # Ensure responses aren't cached
 @app.after_request
 def after_request(response):
@@ -99,6 +136,7 @@ def after_request(response):
 
 @app.route("/")
 def index():
+    print_table("pic_questions")
     return render_template("index.html")
 
 @app.route("/error",methods=["GET"])
@@ -325,6 +363,7 @@ def questions():
             session["question_num"] = session["question_num"]+1
             if num>=len(session.get("picture")):
                 return jsonify({'last':True})
+            create_pic_id()
             dic = session.get("picture")[num]
             pic = db.execute("SELECT img, type FROM pictures WHERE id=:qid", qid=dic["id"])
             pic = blob_to_file(pic[0]["type"], pic[0]["img"])
@@ -341,6 +380,7 @@ def questions():
                 return jsonify({'last':True})
             dic = session.get("bonus")[num]
             if dic["pic"]:
+                create_pic_id()
                 pic = db.execute("SELECT img, type FROM pictures WHERE id=:qid", qid=dic["id"])
                 pic = blob_to_file(pic[0]["type"], pic[0]["img"])
                 dic.update({"pic":pic})
@@ -401,6 +441,7 @@ def questions():
             return jsonify(question["question"][0])
         #if random number corresponds with picture table, select picture and question and return
         if qid > round1_max+reg_max:
+            create_pic_id()
             qid -= round1_max+reg_max
             question = get_question("pic_questions",qid)
             #keep getting random row until successful
@@ -448,6 +489,7 @@ def answers():
             last = session.get("question_num")<len(session.get("picture"))
             answer = db.execute("SELECT answer FROM pic_questions WHERE id=:qid", qid=session.get("picture")[session.get("question_num")-1]["id"])
             answer = {"answer": answer[0]["answer"], "last": last}
+            delete_pic()
             return jsonify(answer)
     if request.args.get("round") == "bonus":
         if not session.get("bonus"):
@@ -455,6 +497,7 @@ def answers():
         else:
             last = session.get("question_num")<len(session.get("bonus"))
             if session.get("bonus")[session.get("question_num")-1]["pic"]:
+                delete_pic()
                 answer = db.execute("SELECT answer FROM pic_questions WHERE id=:qid", qid=session.get("bonus")[session.get("question_num")-1]["id"])
             else:
                 answer = db.execute("SELECT answer FROM regulars WHERE id=:qid", qid=session.get("bonus")[session.get("question_num")-1]["id"])
@@ -469,6 +512,7 @@ def answers():
             answer = db.execute("SELECT answer FROM regulars WHERE id=:qid", qid=qid)
         if table == "pic_questions":
             answer = db.execute("SELECT answer FROM pic_questions WHERE id=:qid", qid=qid)
+            delete_pic()
         return jsonify(answer[0]["answer"])
 
 @app.route("/nextround", methods=["GET"])
