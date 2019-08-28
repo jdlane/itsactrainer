@@ -55,26 +55,26 @@ def blob_to_file(ext, blob):
     blob = bytearray.fromhex(blob)
     if ext == "png":
         try:
-            os.remove("statics/questionpics/"+str(session.get("pic_id"))+".png")
+            os.remove("statics/"+str(session.get("pic_id"))+".png")
         except:
             print("file not found")
-        file = open("statics/questionpics/"+str(session.get("pic_id"))+".png", "x")
+        file = open("statics/"+str(session.get("pic_id"))+".png", "x")
         file.close();
-        file = open("statics/questionpics/"+str(session.get("pic_id"))+".png", "wb")
+        file = open("statics/"+str(session.get("pic_id"))+".png", "wb")
         file.write(blob)
         file.close()
-        return "questionpics/"+str(session.get("pic_id"))+".png"
+        return str(session.get("pic_id"))+".png"
     if ext == "jpg" or ext == "jpeg":
         try:
-            os.remove("statics/questionpics/"+str(session.get("pic_id"))+".jpg")
+            os.remove("statics/"+str(session.get("pic_id"))+".jpg")
         except:
             print("file not found")
-        file = open("statics/questionpics/"+str(session.get("pic_id"))+".jpg", "x")
+        file = open("statics/"+str(session.get("pic_id"))+".jpg", "x")
         file.close();
-        file = open("statics/questionpics/"+str(session.get("pic_id"))+".jpg", "wb")
+        file = open("statics/"+str(session.get("pic_id"))+".jpg", "wb")
         file.write(blob)
         file.close()
-        return "questionpics/"+str(session.get("pic_id"))+".jpg"
+        return str(session.get("pic_id"))+".jpg"
 
 def get_question(table, qid):
     question = None
