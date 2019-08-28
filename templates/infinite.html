@@ -8,7 +8,7 @@ Infinite Academic
 </div>
 </h1>
 <br>
-<img src="" id="pic" class="img-fluid"></img>
+<img src="statics/questionpics/0.png" id="pic" class="img-fluid" style="width: 50%; height: 50%;"></img>
 <p id="theme"></p>
 <h5 id="q"></h5>
 <input type="text" placeholder="Answer">
@@ -28,12 +28,13 @@ Infinite Academic
 
     document.querySelector("input").addEventListener('keypress', (e) => {
         if(e.key==="Enter"){
+            if(document.querySelector("#load").style.visibility === "hidden"){
             loadAnswer();
+            }
         }
     });
 
     function next(){
-        loadQuestion();
         document.querySelector("#answer").innerHTML = "";
          document.querySelector("#q").innerHTML = "";
          document.querySelector("#theme").innerHTML = "";
@@ -42,6 +43,7 @@ Infinite Academic
         document.querySelector("#next").style = "display: none";
         document.querySelector("#check").style = "display: none";
         document.querySelector("#load").style.visibility = "visible";
+      loadQuestion();
     }
 
     function loadQuestion(){
