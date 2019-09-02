@@ -1,4 +1,11 @@
 .q_pic{
+  width: 100%;
+  height: 100%;
+}
+
+@media (min-width: 800px){
+.q_pic{
   width: 40%;
   height: 40%;
+}
 }
