@@ -90,6 +90,7 @@
 
     function loadAnswer(){
         $.get("/answers?round=infinite", (answer) => {
+           document.querySelector("#q").innerHTML = q;
            document.querySelector("#next").style = "display: inline";
            document.querySelector("#answer").innerHTML = answer;
            document.querySelector("input").disabled = true;
