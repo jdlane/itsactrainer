@@ -18,6 +18,8 @@
 
     var buzzed = false;
     var finished = false;
+    var q = "";
+    var qi = 0;
 
     document.addEventListener("DOMContentLoaded", () =>{
         document.querySelector("#in").style = "display: none";
@@ -43,6 +45,7 @@
         document.querySelector("#q").innerHTML = "";
         document.querySelector("#in").style = "display: none";
         document.querySelector("#check").style = "display: none";
+        document.querySelector("#buzz").style = "display: inline";
         loadQuestion();
         document.querySelector("input").disabled = false;
         document.querySelector("#answer").innerHTML = "";
@@ -64,30 +67,24 @@
            }else{
                document.querySelector("#pic").style = "display: none;";
            }
+          q = info["question"]
+          nextLetter();
         });
-        document.querySelector("#q").innerHTML = "";
-        nextLetter();
     }
 
     function nextLetter(){
+        if(qi>=q.length){
+          finished = true;
+        }
         if(!buzzed&&!finished){
-        $.get("/questions?round=infinite&letters=1", (info) => {
-           if(info === "no question"){
-               next();
-           }else if(info === "last"){
-               finished = true;
-           }else{
-                if(info["index"]==0){
-                    document.querySelector("#q").innerHTML = document.querySelector("#q").innerHTML+info["question"];
-                }else if(document.querySelector("#q").innerHTML !== ""){
-                    document.querySelector("#q").innerHTML = document.querySelector("#q").innerHTML+info["question"];
-                }
-           }
-        });
+           document.querySelector("#q").innerHTML += q[qi];
+           qi++;
         setTimeout(nextLetter, 100)
         }else{
             document.querySelector("#in").style = "display: inline";
             document.querySelector("#check").style = "display: inline";
+            document.querySelector("#buzz").style = "display: none";
+            qi = 0;
         }
     }
 
