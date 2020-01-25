@@ -35,6 +35,14 @@
         }
     });
 
+    document.addEventListener('keypress', (e) => {
+        console.log('key');
+       if(e.key === ' ' || e.key === 'Spacebar'){
+           console.log('space');
+           document.querySelector("#buzz").click();
+       }
+    });
+
     function buzz(){
         buzzed = true;
     }
